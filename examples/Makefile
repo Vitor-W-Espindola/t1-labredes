@@ -1,7 +1,17 @@
+# This makefile is capable of creating an example for a hub application, a client application and a packet tester application.
+# The rules hub, cli and mock_rtlp are responsable for that, respectively.
+
 PROJECT_DIR	= .
 SRC_DIR		= ../src
 
-all: mock_rtlp cli
+hub: hub.o server.o  rtlp.o
+	gcc -o hub hub.o rtlp.o
+
+hub.o: $(PROJECT_DIR)/hub.c
+	gcc -g -c $(PROJECT_DIR)/hub.c
+
+server.o: $(SRC_DIR)/server.c
+	gcc -g -c $(SRC_DIR)/server.c
 
 cli: cli.o client.o rtlp.o
 	gcc -o cli cli.o client.o rtlp.o
@@ -22,4 +32,4 @@ rtlp.o: $(SRC_DIR)/rtlp.c
 	gcc -g -c $(SRC_DIR)/rtlp.c
 
 clean:
-	rm *.o mock_rtlp cli
+	rm -f *.o mock_rtlp cli hub
