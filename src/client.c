@@ -59,9 +59,23 @@ int process_command(char *command, struct rtlp_packet * rtlp_packet) {
 	memset(aux_buf, 0, CLIENT_CMD_LEN);
 	
 	// Reading 1st parameter of the command
+	// Keeps words inside \' or \" as one single parameter
+	uint8_t reading_message = 0;
 	for(int i = 0; i < RTLP_OPERATION_FIRST_PARAMETER_LEN; i++) {
-		if(command[cmd_index] != ' ') operation_first_parameter[i] = command[cmd_index++];
-		else { cmd_index++; break; }
+		if(command[cmd_index] != ' ') {
+			if(command[cmd_index] == '\'' || command[cmd_index] == '\"') {
+				if(reading_message == 0) reading_message = 1;
+				else if(reading_message == 1) reading_message = 0;
+				cmd_index++;
+				i--;
+				continue;
+			}
+			operation_first_parameter[i] = command[cmd_index++];
+		} else {
+			cmd_index++;
+			if (reading_message == 0) break;
+			else operation_first_parameter[i] = 0x20; // White space
+		}
 	}
 
 	// Reading 2nd parameter of the command

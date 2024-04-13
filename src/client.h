@@ -1,9 +1,9 @@
+// Describes the operations that goes underly the client application
+
 #ifndef CLIENT_H 
 #define CLIENT_H
 
 #include "../src/rtlp.h"
-
-// Describes the operations that goes underly the client application
 
 #define CLIENT_CMD_LEN 256
 
