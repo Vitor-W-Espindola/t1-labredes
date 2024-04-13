@@ -5,19 +5,18 @@
 
 uint8_t rtlp_packet_build(
 		struct rtlp_packet * rtlp_packet, 
-		struct in_addr * src_addr, 
-		struct in_addr * dest_addr, 
 		uint8_t operation, 
-		uint8_t data[RTLP_DATA_LEN], 
+		uint8_t operation_first_parameter[RTLP_OPERATION_FIRST_PARAMETER_LEN],
+		uint8_t operation_second_parameter[RTLP_OPERATION_SECOND_PARAMETER_LEN],
 		uint8_t type,
 		uint8_t response, 
 		uint8_t transport_protocol) {
 
-	rtlp_packet->src_addr = src_addr;
-	rtlp_packet->dest_addr = dest_addr;
 	rtlp_packet->operation = operation;
-	memset(rtlp_packet->data, 0, RTLP_DATA_LEN);
-	memcpy(rtlp_packet->data, data, RTLP_DATA_LEN);
+	memset(rtlp_packet->operation_first_parameter, 0, RTLP_OPERATION_FIRST_PARAMETER_LEN);
+	memcpy(rtlp_packet->operation_first_parameter, operation_first_parameter, RTLP_OPERATION_FIRST_PARAMETER_LEN);
+	memset(rtlp_packet->operation_second_parameter, 0, RTLP_OPERATION_SECOND_PARAMETER_LEN);
+	memcpy(rtlp_packet->operation_second_parameter, operation_second_parameter, RTLP_OPERATION_SECOND_PARAMETER_LEN);
 	rtlp_packet->type = type;
 	rtlp_packet->response = response;
 	rtlp_packet->transport_protocol = transport_protocol;
@@ -27,5 +26,5 @@ uint8_t rtlp_packet_build(
 
 void print_rtlp_packet(struct rtlp_packet * rtlp_packet) {
 	printf("RTLP Packet\n");
-	printf("src_addr: %lu\ndest_addr: %lu\noperation: %d\ndata: %s\ntype: %d\nresponse: %d\ntransport_protocol: %d\n", rtlp_packet->src_addr->s_addr, rtlp_packet->dest_addr->s_addr, rtlp_packet->operation, rtlp_packet->data, rtlp_packet->type, rtlp_packet->response, rtlp_packet->transport_protocol);
+	printf("operation: %d\noperation_first_parameter:%s \noperation_second_parameter:%s \ntype: %d\nresponse: %d\ntransport_protocol: %d\n", rtlp_packet->operation, rtlp_packet->operation_first_parameter, rtlp_packet->operation_second_parameter, rtlp_packet->type, rtlp_packet->response, rtlp_packet->transport_protocol);
 }
