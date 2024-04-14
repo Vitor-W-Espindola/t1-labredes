@@ -15,6 +15,6 @@ extern const char * cmd_name_list;
 extern const char * cmd_name_quit;
 
 // In-place function which processes a string (the full command line) and populates a RTLP packet.
-int process_command(char *command, struct rtlp_packet * rtlp_packet);
+int from_command_to_packet(char *command, struct rtlp_packet * rtlp_packet);
 
 #endif

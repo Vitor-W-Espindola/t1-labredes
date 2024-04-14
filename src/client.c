@@ -12,7 +12,7 @@ const char * cmd_name_nickname = "nickname";
 const char * cmd_name_list = "list";
 const char * cmd_name_quit = "quit";
 
-int process_command(char *command, struct rtlp_packet * rtlp_packet) {
+int from_command_to_packet(char *command, struct rtlp_packet * rtlp_packet) {
 	// E.g.: command = sendall <message>
 	// return 0 -> packet populated successfully
 	// return 1 -> invalid command
