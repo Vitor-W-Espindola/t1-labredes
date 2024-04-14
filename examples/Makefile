@@ -4,8 +4,8 @@
 PROJECT_DIR	= .
 SRC_DIR		= ../src
 
-hub: hub.o server.o  rtlp.o
-	gcc -o hub hub.o rtlp.o
+hub: hub.o server.o rtlp.o
+	gcc -o hub hub.o server.o rtlp.o
 
 hub.o: $(PROJECT_DIR)/hub.c
 	gcc -g -c $(PROJECT_DIR)/hub.c

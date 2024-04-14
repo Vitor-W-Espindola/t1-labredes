@@ -61,33 +61,62 @@ int main(int argc, char **argv) {
 	int connection = connect(socket_fd, (const struct sockaddr *) &server_addr, sizeof(server_addr));
 	if(connection < 0) die("connect");
 
-	printf("Command: ");
-	
-	// Read from user
-	uint8_t cmd_buf[CLIENT_CMD_LEN];
-	memset(cmd_buf, 0, CLIENT_CMD_LEN);
-	fgets(cmd_buf, CLIENT_CMD_LEN, stdin);
-	cmd_buf[strcspn(cmd_buf, "\r\n")] = ' ';
-	cmd_buf[CLIENT_CMD_LEN - 1] = '\0';
-	
-	// Translate command to rtlp_packet
+	// Receives an ACK from server
 	struct rtlp_packet rtlp_packet;
-	if(process_command(cmd_buf, &rtlp_packet) == 1) {
-		printf("Invalid command.\n");
-		return 1;
-	};
-	
-	// Sends packet through socket
 	uint8_t packet_buf[SERVER_BUF_LEN];
 	memset(packet_buf, 0, SERVER_BUF_LEN);
-	memcpy(packet_buf, &rtlp_packet, sizeof(rtlp_packet));
 	
-	int write_len = write(socket_fd, packet_buf, SERVER_BUF_LEN);
-	if (write_len < 0) die("write");
+	int recv_len = read(socket_fd, packet_buf, SERVER_BUF_LEN);
+	if (recv_len == -1) die("read"); 
+
+	// Casts bytes to a rtlp_packet
+	memset(&rtlp_packet, 0, sizeof(rtlp_packet));
+	memcpy(&rtlp_packet, packet_buf, SERVER_BUF_LEN);
+	
+	if(rtlp_packet.response == RTLP_RESPONSE_FULL_SERVER) printf("The server is full.\n");
+	else {
+		while(1) {
+			// Reads command from cli
+			uint8_t cmd_buf[CLIENT_CMD_LEN];
+			memset(cmd_buf, 0, CLIENT_CMD_LEN);
+			
+			printf("Command: ");
+		
+			fgets(cmd_buf, CLIENT_CMD_LEN, stdin);
+			cmd_buf[strcspn(cmd_buf, "\r\n")] = ' ';
+			cmd_buf[CLIENT_CMD_LEN - 1] = '\0';
+			
+			// Translate command to rtlp_packet
+			memset(&rtlp_packet, 0, sizeof(rtlp_packet));
+			if(from_command_to_packet(cmd_buf, &rtlp_packet) == 1) {
+				printf("Invalid command.\n");
+				break;;
+			};
+				
+			// Sends rtlp packet through socket
+			memset(packet_buf, 0, SERVER_BUF_LEN);
+			memcpy(packet_buf, &rtlp_packet, sizeof(rtlp_packet));
+			
+			int write_len = write(socket_fd, packet_buf, SERVER_BUF_LEN);
+			if (write_len < 0) die("write");
+			
+			print_rtlp_packet(&rtlp_packet);
+
+			if(rtlp_packet.operation == RTLP_OPERATION_CLIENT_QUIT) break;	
+			// Receives an ACK from server
+			memset(packet_buf, 0, SERVER_BUF_LEN);
+			
+			int recv_len = read(socket_fd, packet_buf, SERVER_BUF_LEN);
+			if (recv_len == -1) die("read"); 
+
+			// Casts bytes to a rtlp_packet
+			memset(&rtlp_packet, 0, sizeof(rtlp_packet));
+			memcpy(&rtlp_packet, packet_buf, SERVER_BUF_LEN);
+			
+		}
+	}		
 
 	close(socket_fd);
-
-	print_rtlp_packet(&rtlp_packet);
 	
 	return 0;
 }
