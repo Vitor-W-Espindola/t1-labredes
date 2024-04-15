@@ -11,11 +11,12 @@
 #define SERVER_BUF_LEN 516
 #define SERVER_MAX_CONNECTED_USERS 2
 #define SERVER_MAX_PENDING_CONNECTIONS 5
+#define SERVER_NICKNAME_LEN 16
 
 struct user {
 	int user_socket_fd;
 	struct sockaddr_in user_addr_info;
-	char nickname[];
+	char nickname[SERVER_NICKNAME_LEN];
 };
 
 struct server {
@@ -27,9 +28,13 @@ struct server {
 };
 
 int create_server(struct server * server);
-void * server_response(void * server);
+void * connection_handler(void * server);
 int start_server(struct server * server);
-
 int send_response_to_client(int client_socket_fd, uint8_t response);
+int create_user(struct user * user, int user_socket_fd, struct sockaddr_in user_addr_info, char nickname[SERVER_NICKNAME_LEN]);
+int add_new_user(struct server * server, struct user * user);
+int remove_user(struct server * server, struct user * user);
+void list_users(struct server * server);
+void print_user_info(struct user * user);
 
 #endif
