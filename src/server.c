@@ -118,6 +118,7 @@ int start_server(struct server * server) {
 	
 	while(poll(&server_socket_poll, 1, -1) != -1) {
 		if(server_socket_poll.revents & POLLIN) {
+			printf("AAAAAAAAAAAAAAAAAAAAA\n");
 			pthread_t server_thread_id;
 			pthread_create(&server_thread_id, NULL, connection_handler, server);
 		}

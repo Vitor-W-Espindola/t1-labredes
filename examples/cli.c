@@ -53,11 +53,13 @@ int main(int argc, char **argv) {
 	
 	if(rtlp_packet.response == RTLP_RESPONSE_FULL_SERVER) printf("The server is full.\n");
 	else {
-		while(1) {
-			pid_t p;
-			p = fork();
-			if (p < 0) break;
-			else if (p == 0) {
+		pid_t p;
+		p = fork();
+		if (p < 0) {
+			close(socket_fd);
+			exit(0);
+		} else if (p == 0) {
+			while(1) {
 				// The child process manages incoming packets
 
 				// Receives an ACK from server
@@ -71,7 +73,9 @@ int main(int argc, char **argv) {
 				memcpy(&rtlp_packet, packet_buf, SERVER_BUF_LEN);	
 				
 				// The packet must be processed accordingly to the type of packet ...
-			} else {
+			}
+		} else {
+			while(1) {
 				// The parent process manages outcoming packets
 				
 				// Reads command from cli
