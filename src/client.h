@@ -6,6 +6,7 @@
 #include "../src/rtlp.h"
 
 #define CLIENT_CMD_LEN 256
+#define CLIENT_NICKNAME_LEN 16
 
 extern const char * cmd_name_sendall;
 extern const char * cmd_name_sendpv;
@@ -14,7 +15,11 @@ extern const char * cmd_name_nickname;
 extern const char * cmd_name_list;
 extern const char * cmd_name_quit;
 
+struct client {
+	char nickname[CLIENT_NICKNAME_LEN];
+};
+
 // In-place function which processes a string (the full command line) and populates a RTLP packet.
-int from_command_to_packet(char *command, struct rtlp_packet * rtlp_packet);
+int from_command_to_packet(char *command, struct rtlp_packet * rtlp_packet, struct client * client);
 
 #endif

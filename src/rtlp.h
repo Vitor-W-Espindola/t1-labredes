@@ -26,9 +26,10 @@
 #define RTLP_TYPE_CLIENT_TO_SERVER_TRA 0x4
 #define RTLP_TYPE_SERVER_TO_CLIENT_ASYNC 0x5
 
-#define RTLP_RESPONSE_OK 0x0
-#define RTLP_RESPONSE_NOK 0x1
-#define RTLP_RESPONSE_FULL_SERVER 0x2
+#define RTLP_RESPONSE_NONE 0x0
+#define RTLP_RESPONSE_OK 0x1
+#define RTLP_RESPONSE_NOK 0x2
+#define RTLP_RESPONSE_FULL_SERVER 0x3
 
 #define RTLP_TRANSPORT_PROTOCOL_TCP 0x0
 #define RTLP_TRANSPORT_PROTOCOL_UDP 0x1
@@ -37,6 +38,8 @@
 
 // Structure of the RTLP packet
 struct rtlp_packet {
+	// TODO: change for parameters: source, destination, data
+
 	uint8_t operation;
 	uint8_t operation_first_parameter[RTLP_OPERATION_FIRST_PARAMETER_LEN];
 	uint8_t operation_second_parameter[RTLP_OPERATION_SECOND_PARAMETER_LEN];

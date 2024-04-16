@@ -61,11 +61,6 @@ void * connection_handler(void * server) {
 
 	printf("Client connected %s:%d\n", inet_ntoa(client_si.sin_addr), ntohs(client_si.sin_port));
 	
-	struct user u;
-	memset(&u, 0, sizeof(u));
-	create_user(&u, client_socket_fd, client_si, inet_ntoa(client_si.sin_addr));
-	struct rtlp_packet rtlp_packet;
-	uint8_t packet_buf[SERVER_BUF_LEN];
 	if(s->num_connected_users >= s->max_connected_users) {
 
 		// Sends an ACK FULL_SERVER and closes connection if server is full	
@@ -76,28 +71,54 @@ void * connection_handler(void * server) {
 		close(client_socket_fd);	
 		return NULL;
 	} else {
+		struct user u;
+		memset(&u, 0, sizeof(u));
+		create_user(&u, client_socket_fd, client_si, inet_ntoa(client_si.sin_addr));
 		add_new_user(s, &u);
 
 		s->num_connected_users += 1;	
 
-		// Sends an ACK OK		
-		send_response_to_client(client_socket_fd, RTLP_RESPONSE_OK);
-	
+		// Sends an ACK OK with the the clients nickname
+		struct rtlp_packet rtlp_packet;
+		uint8_t operation = RTLP_OPERATION_SERVER_MSG;
+		uint8_t operation_first_parameter[RTLP_OPERATION_FIRST_PARAMETER_LEN];
+		uint8_t operation_second_parameter[RTLP_OPERATION_SECOND_PARAMETER_LEN];
+		memset(operation_first_parameter, 0, RTLP_OPERATION_FIRST_PARAMETER_LEN);
+		memset(operation_second_parameter, 0, RTLP_OPERATION_SECOND_PARAMETER_LEN);
+		char new_nickname[SERVER_NICKNAME_LEN];
+		sprintf(new_nickname, "%s:%d", inet_ntoa(client_si.sin_addr), ntohs(client_si.sin_port));
+		strcpy(operation_first_parameter, new_nickname); 	
+		uint8_t type = RTLP_TYPE_SERVER_TO_CLIENT_ACK;
+		uint8_t response = RTLP_RESPONSE_OK;
+		uint8_t transport_protocol = RTLP_TRANSPORT_PROTOCOL_TCP;
+		rtlp_packet_build(&rtlp_packet, operation, operation_first_parameter, operation_second_parameter, type, response, transport_protocol);
+
+		uint8_t packet_buf[SERVER_BUF_LEN];
+		memset(packet_buf, 0, SERVER_BUF_LEN);		
+		memcpy(packet_buf, &rtlp_packet, SERVER_BUF_LEN);
+		write(client_socket_fd, packet_buf, SERVER_BUF_LEN); 
+		
 		// Starts receiving commands from user	
-		char buf[SERVER_BUF_LEN];
-		memset(buf, 0, sizeof(buf));
+		struct rtlp_packet rtlp_packet_in, rtlp_packet_out;
+		uint8_t buf_in[SERVER_BUF_LEN];
+		memset(&buf_in, 0, SERVER_BUF_LEN);
+		memset(&packet_buf, 0, SERVER_BUF_LEN);
 		int recv_len = 0;
 		while(1) {
 			// Receives data from client, blocking the thread
-			recv_len = read(client_socket_fd, buf, SERVER_BUF_LEN);
+			recv_len = read(client_socket_fd, buf_in, SERVER_BUF_LEN);
 			if (recv_len == -1 || recv_len == 0) break;
 
 			// Casts bytes to a rtlp_packet
-			memcpy(&rtlp_packet, packet_buf, SERVER_BUF_LEN);
+			memcpy(&rtlp_packet_in, buf_in, SERVER_BUF_LEN);
 			printf("Data received\n");
 
+			// Process packet
+			printf("Processing the packet:\n");
+			process_packet(s, &rtlp_packet_in);
+
 			for(int i = 0; i < SERVER_BUF_LEN; i++)
-				printf("%x ", buf[i]);
+				printf("%x ", buf_in[i]);
 			printf("\n");
 
 			// Sends an ACK OK to client		
@@ -118,7 +139,6 @@ int start_server(struct server * server) {
 	
 	while(poll(&server_socket_poll, 1, -1) != -1) {
 		if(server_socket_poll.revents & POLLIN) {
-			printf("AAAAAAAAAAAAAAAAAAAAA\n");
 			pthread_t server_thread_id;
 			pthread_create(&server_thread_id, NULL, connection_handler, server);
 		}
@@ -183,4 +203,62 @@ void print_user_info(struct user * user) {
 	printf("user_socket_fd: %d\n", user->user_socket_fd);
 	printf("user_addr_info:%s:%d\n", inet_ntoa(user->user_addr_info.sin_addr), ntohs(user->user_addr_info.sin_port));
 	printf("nickname: %s\n", user->nickname);
+}
+
+// Function used by thread for processing the packet
+// and modify server structure
+int process_packet(struct server * server, struct rtlp_packet * rtlp_packet_in) {
+
+	printf("Processing packet: \n");
+	uint8_t operation_second_parameter[RTLP_OPERATION_SECOND_PARAMETER_LEN];
+	struct rtlp_packet rtlp_packet_out;
+	uint8_t packet_buf[SERVER_BUF_LEN];
+
+	switch(rtlp_packet_in->operation) {
+		case RTLP_OPERATION_CLIENT_SENDALL:
+			memset(operation_second_parameter, 0, RTLP_OPERATION_SECOND_PARAMETER_LEN);
+			memset(&rtlp_packet_out, 0, sizeof(struct rtlp_packet));
+			// first parameter -> message
+			// second parameter -> sender (implicit)
+			// strcpy(opeartion_second_parameter, inet_ntoa()
+	
+			rtlp_packet_build(&rtlp_packet_out, RTLP_OPERATION_SERVER_MSG, rtlp_packet_in->operation_first_parameter, rtlp_packet_in->operation_second_parameter, RTLP_TYPE_SERVER_TO_CLIENT_ASYNC, RTLP_RESPONSE_NONE, RTLP_TRANSPORT_PROTOCOL_TCP);
+			
+			memset(packet_buf, 0, SERVER_BUF_LEN);		
+			memcpy(packet_buf, &rtlp_packet_out, SERVER_BUF_LEN);
+
+			for(int i = 0; i < server->num_connected_users; i++) {
+				printf("Sending message to file descriptor: %d...\n", server->connected_users[i].user_socket_fd);
+				write(server->connected_users[i].user_socket_fd, packet_buf, SERVER_BUF_LEN); 
+			}
+			break;
+
+		case RTLP_OPERATION_CLIENT_SENDPV:
+			printf("Processing RTLP_OPERATION_CLIENT_SENDPV operation...\n");
+			print_rtlp_packet(rtlp_packet_in);
+			// first parameter -> message
+			// second parameter -> receiver
+			memset(operation_second_parameter, 0, RTLP_OPERATION_SECOND_PARAMETER_LEN);
+			memset(&rtlp_packet_out, 0, sizeof(struct rtlp_packet));
+			
+			// TODO: send the sender
+			rtlp_packet_build(&rtlp_packet_out, RTLP_OPERATION_SERVER_MSG, rtlp_packet_in->operation_first_parameter, operation_second_parameter, RTLP_TYPE_SERVER_TO_CLIENT_ASYNC, RTLP_RESPONSE_NONE, RTLP_TRANSPORT_PROTOCOL_TCP);
+
+			memset(packet_buf, 0, SERVER_BUF_LEN);		
+			memcpy(packet_buf, &rtlp_packet_out, SERVER_BUF_LEN);
+
+			// Searches for the receiver
+			for(int i = 0; i < server->num_connected_users; i++) {
+				printf("Comparing %s with %s\n",rtlp_packet_in->operation_second_parameter, server->connected_users[i].nickname);
+				if(!strcmp(server->connected_users[i].nickname, rtlp_packet_in->operation_second_parameter)) {
+					printf("Sending private message to file descriptor: %d...\n", server->connected_users[i].user_socket_fd);
+					write(server->connected_users[i].user_socket_fd, packet_buf, SERVER_BUF_LEN);
+				}
+			}
+			break;
+
+		default:
+			break;
+	}
+	return 0;
 }

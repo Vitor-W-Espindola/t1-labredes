@@ -6,6 +6,7 @@
 
 #include <arpa/inet.h>
 #include <sys/socket.h>
+#include "rtlp.h"
 
 #define SERVER_PORT 8888
 #define SERVER_BUF_LEN 516
@@ -36,5 +37,6 @@ int add_new_user(struct server * server, struct user * user);
 int remove_user(struct server * server, struct user * user);
 void list_users(struct server * server);
 void print_user_info(struct user * user);
+int process_packet(struct server * server, struct rtlp_packet * rtlp_packet_in);
 
 #endif

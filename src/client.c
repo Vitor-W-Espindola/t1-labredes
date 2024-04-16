@@ -12,17 +12,15 @@ const char * cmd_name_nickname = "nickname";
 const char * cmd_name_list = "list";
 const char * cmd_name_quit = "quit";
 
-int from_command_to_packet(char *command, struct rtlp_packet * rtlp_packet) {
-	// E.g.: command = sendall <message>
-	// return 0 -> packet populated successfully
-	// return 1 -> invalid command
-
+int from_command_to_packet(char *command, struct rtlp_packet * rtlp_packet, struct client * client) {
+	
+	// Reading command
 	uint8_t operation;
-	uint8_t operation_first_parameter[RTLP_OPERATION_FIRST_PARAMETER_LEN];
-	uint8_t operation_second_parameter[RTLP_OPERATION_SECOND_PARAMETER_LEN];
+	uint8_t first_parameter[RTLP_OPERATION_FIRST_PARAMETER_LEN];
+	uint8_t second_parameter[RTLP_OPERATION_SECOND_PARAMETER_LEN];
 
-	memset(operation_first_parameter, 0, RTLP_OPERATION_FIRST_PARAMETER_LEN);
-	memset(operation_second_parameter, 0, RTLP_OPERATION_SECOND_PARAMETER_LEN);
+	memset(first_parameter, 0, RTLP_OPERATION_FIRST_PARAMETER_LEN);
+	memset(second_parameter, 0, RTLP_OPERATION_SECOND_PARAMETER_LEN);
 	
 	int cmd_index = 0;
 
@@ -34,7 +32,6 @@ int from_command_to_packet(char *command, struct rtlp_packet * rtlp_packet) {
 		if(command[cmd_index] != ' ') aux_buf[i] = command[cmd_index++];
 		else {
 			cmd_index++;
-
 			if(!strcmp(aux_buf, cmd_name_sendall))
 				operation = RTLP_OPERATION_CLIENT_SENDALL; 
 			else if(!strcmp(aux_buf, cmd_name_sendpv))
@@ -70,21 +67,61 @@ int from_command_to_packet(char *command, struct rtlp_packet * rtlp_packet) {
 				i--;
 				continue;
 			}
-			operation_first_parameter[i] = command[cmd_index++];
+			first_parameter[i] = command[cmd_index++];
 		} else {
 			cmd_index++;
 			if (reading_message == 0) break;
-			else operation_first_parameter[i] = 0x20; // White space
+			else first_parameter[i] = 0x20; // White space
+		}
+	}
+	
+	// Reading 2nd parameter of the command
+	for(int i = 0; i < RTLP_OPERATION_SECOND_PARAMETER_LEN; i++) {
+		if(command[cmd_index] != ' ') {
+			if(command[cmd_index] == '\'' || command[cmd_index] == '\"') {
+				if(reading_message == 0) reading_message = 1;
+				else if(reading_message == 1) reading_message = 0;
+				cmd_index++;
+				i--;
+				continue;
+			}
+			second_parameter[i] = command[cmd_index++];
+		} else {
+			cmd_index++;
+			if (reading_message == 0) break;
+			else second_parameter[i] = 0x20;
 		}
 	}
 
-	// Reading 2nd parameter of the command
-	for(int i = 0; i < RTLP_OPERATION_SECOND_PARAMETER_LEN; i++) {
-		if(command[cmd_index] != ' ') operation_second_parameter[i] = command[cmd_index++];
-		else { cmd_index++; break; }
+	uint8_t operation_first_parameter[RTLP_OPERATION_FIRST_PARAMETER_LEN];
+	uint8_t operation_second_parameter[RTLP_OPERATION_SECOND_PARAMETER_LEN];
+	uint8_t type, response, transport_protocol;
+
+
+	memset(operation_first_parameter, 0, RTLP_OPERATION_FIRST_PARAMETER_LEN);
+	memset(operation_second_parameter, 0, RTLP_OPERATION_SECOND_PARAMETER_LEN);
+
+	switch(operation) {
+		case RTLP_OPERATION_CLIENT_SENDALL:
+			strcpy(operation_first_parameter, first_parameter); 
+			strcpy(operation_second_parameter, client->nickname);
+			type = RTLP_TYPE_CLIENT_TO_SERVER_ACK;
+			response = RTLP_RESPONSE_NONE;
+			transport_protocol = RTLP_TRANSPORT_PROTOCOL_TCP;
+			
+			break;
+		case RTLP_OPERATION_CLIENT_SENDPV:
+			strcpy(operation_first_parameter, first_parameter);
+			strcpy(operation_second_parameter, second_parameter);
+			type = RTLP_TYPE_CLIENT_TO_SERVER_ACK;
+			response = RTLP_RESPONSE_NONE;
+			transport_protocol = RTLP_TRANSPORT_PROTOCOL_TCP;
+			break;
+		default:
+			break;
 	}
 
-	rtlp_packet_build(rtlp_packet, operation, operation_first_parameter, operation_second_parameter, RTLP_TYPE_CLIENT_TO_SERVER_REQ, RTLP_RESPONSE_OK, RTLP_TRANSPORT_PROTOCOL_TCP);
+	rtlp_packet_build(rtlp_packet, operation, operation_first_parameter, operation_second_parameter, type, response, transport_protocol);
 	
 	return 0;
 }
