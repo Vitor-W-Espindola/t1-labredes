@@ -84,15 +84,18 @@ void * connection_handler(void * server) {
 		// Sends an ACK OK with the the clients nickname
 		struct rtlp_packet rtlp_packet;
 		uint8_t operation = RTLP_OPERATION_SERVER_MSG;
-		uint8_t operation_first_parameter[RTLP_OPERATION_FIRST_PARAMETER_LEN];
-		uint8_t operation_second_parameter[RTLP_OPERATION_SECOND_PARAMETER_LEN];
-		memset(operation_first_parameter, 0, RTLP_OPERATION_FIRST_PARAMETER_LEN);
-		memset(operation_second_parameter, 0, RTLP_OPERATION_SECOND_PARAMETER_LEN);
-		strcpy(operation_first_parameter, new_nickname); 	
+		uint8_t source[RTLP_SOURCE_LEN];
+		uint8_t destination[RTLP_DESTINATION_LEN];
+		uint8_t data[RTLP_DATA_LEN];
+		memset(source, 0, RTLP_SOURCE_LEN);
+		memset(destination, 0, RTLP_DESTINATION_LEN);
+		memset(data, 0, RTLP_DATA_LEN);
+		strcpy(destination, new_nickname);
+		strcpy(data, new_nickname); 	
 		uint8_t type = RTLP_TYPE_SERVER_TO_CLIENT_ACK;
 		uint8_t response = RTLP_RESPONSE_OK;
 		uint8_t transport_protocol = RTLP_TRANSPORT_PROTOCOL_TCP;
-		rtlp_packet_build(&rtlp_packet, operation, operation_first_parameter, operation_second_parameter, type, response, transport_protocol);
+		rtlp_packet_build(&rtlp_packet, operation, source, destination, data, type, response, transport_protocol);
 
 		uint8_t packet_buf[SERVER_BUF_LEN];
 		memset(packet_buf, 0, SERVER_BUF_LEN);		
@@ -152,13 +155,14 @@ int send_response_to_client(int client_socket_fd, uint8_t response) {
 	struct rtlp_packet rtlp_packet;
 	uint8_t packet_buf[SERVER_BUF_LEN];
 
-	uint8_t operation_first_parameter[RTLP_OPERATION_FIRST_PARAMETER_LEN], operation_second_parameter[RTLP_OPERATION_SECOND_PARAMETER_LEN];
-	memset(operation_first_parameter, 0, RTLP_OPERATION_FIRST_PARAMETER_LEN);
-	memset(operation_second_parameter, 0, RTLP_OPERATION_SECOND_PARAMETER_LEN);
+	uint8_t source[RTLP_SOURCE_LEN], destination[RTLP_DESTINATION_LEN], data[RTLP_DATA_LEN];
+	memset(source, 0, RTLP_SOURCE_LEN);
+	memset(destination, 0, RTLP_DESTINATION_LEN);
+	memset(data, 0, RTLP_DATA_LEN);
 
 	memset(&rtlp_packet, 0, SERVER_BUF_LEN);	
 
-	rtlp_packet_build(&rtlp_packet, RTLP_OPERATION_SERVER_MSG, operation_first_parameter, operation_second_parameter, RTLP_TYPE_SERVER_TO_CLIENT_ACK, response, RTLP_TRANSPORT_PROTOCOL_TCP);
+	rtlp_packet_build(&rtlp_packet, RTLP_OPERATION_SERVER_MSG, source, destination, data, RTLP_TYPE_SERVER_TO_CLIENT_ACK, response, RTLP_TRANSPORT_PROTOCOL_TCP);
 
 	memset(packet_buf, 0, SERVER_BUF_LEN);		
 
@@ -210,20 +214,34 @@ void print_user_info(struct user * user) {
 // and modify server structure
 int process_packet(struct server * server, struct rtlp_packet * rtlp_packet_in) {
 
+	list_users(server);
+
 	printf("Processing packet: \n");
-	uint8_t operation_second_parameter[RTLP_OPERATION_SECOND_PARAMETER_LEN];
+	
+	uint8_t source[RTLP_SOURCE_LEN], destination[RTLP_DESTINATION_LEN], data[RTLP_DATA_LEN];
+	
+	int user_socket_fd = 0;
+	for(int i = 0; i < server->num_connected_users; i++) {
+		if(!strcmp(server->connected_users[i].nickname, rtlp_packet_in->source)) {
+			user_socket_fd = server->connected_users->user_socket_fd;
+			break;
+		}
+	}
+
 	struct rtlp_packet rtlp_packet_out;
 	uint8_t packet_buf[SERVER_BUF_LEN];
 
 	switch(rtlp_packet_in->operation) {
 		case RTLP_OPERATION_CLIENT_SENDALL:
-			memset(operation_second_parameter, 0, RTLP_OPERATION_SECOND_PARAMETER_LEN);
+			// source -> nickname
+			// destination -> empty
+			// data -> message
+			memset(source, 0, RTLP_SOURCE_LEN);
+			memset(destination, 0, RTLP_DESTINATION_LEN);
+			memset(data, 0, RTLP_DATA_LEN);
 			memset(&rtlp_packet_out, 0, sizeof(struct rtlp_packet));
-			// first parameter -> message
-			// second parameter -> sender (implicit)
-			// strcpy(opeartion_second_parameter, inet_ntoa()
 	
-			rtlp_packet_build(&rtlp_packet_out, RTLP_OPERATION_SERVER_MSG, rtlp_packet_in->operation_first_parameter, rtlp_packet_in->operation_second_parameter, RTLP_TYPE_SERVER_TO_CLIENT_ASYNC, RTLP_RESPONSE_NONE, RTLP_TRANSPORT_PROTOCOL_TCP);
+			rtlp_packet_build(&rtlp_packet_out, RTLP_OPERATION_SERVER_MSG, rtlp_packet_in->source, destination, rtlp_packet_in->data, RTLP_TYPE_SERVER_TO_CLIENT_ASYNC, RTLP_RESPONSE_NONE, RTLP_TRANSPORT_PROTOCOL_TCP);
 			
 			memset(packet_buf, 0, SERVER_BUF_LEN);		
 			memcpy(packet_buf, &rtlp_packet_out, SERVER_BUF_LEN);
@@ -234,28 +252,39 @@ int process_packet(struct server * server, struct rtlp_packet * rtlp_packet_in) 
 			}
 			break;
 
-		case RTLP_OPERATION_CLIENT_SENDPV:
-			printf("Processing RTLP_OPERATION_CLIENT_SENDPV operation...\n");
+		case RTLP_OPERATION_CLIENT_SENDPV:	
+			// source -> source nickname
+			// destination -> destination nickname
+			// data -> message
+			memset(source, 0, RTLP_SOURCE_LEN);
+			memset(destination, 0, RTLP_DESTINATION_LEN);
+			memset(data, 0, RTLP_DATA_LEN);
 			print_rtlp_packet(rtlp_packet_in);
-			// first parameter -> message
-			// second parameter -> receiver
-			memset(operation_second_parameter, 0, RTLP_OPERATION_SECOND_PARAMETER_LEN);
-			memset(&rtlp_packet_out, 0, sizeof(struct rtlp_packet));
 			
-			// TODO: send the sender
-			rtlp_packet_build(&rtlp_packet_out, RTLP_OPERATION_SERVER_MSG, rtlp_packet_in->operation_first_parameter, operation_second_parameter, RTLP_TYPE_SERVER_TO_CLIENT_ASYNC, RTLP_RESPONSE_NONE, RTLP_TRANSPORT_PROTOCOL_TCP);
+			printf("Processing RTLP_OPERATION_CLIENT_SENDPV operation...\n");
 
-			memset(packet_buf, 0, SERVER_BUF_LEN);		
-			memcpy(packet_buf, &rtlp_packet_out, SERVER_BUF_LEN);
+			memset(&rtlp_packet_out, 0, sizeof(struct rtlp_packet));
 
-			// Searches for the receiver
+			// Searches for the destination
 			for(int i = 0; i < server->num_connected_users; i++) {
-				printf("Comparing %s with %s\n",rtlp_packet_in->operation_second_parameter, server->connected_users[i].nickname);
-				if(!strcmp(server->connected_users[i].nickname, rtlp_packet_in->operation_second_parameter)) {
+				printf("Comparing %s with %s\n",rtlp_packet_in->destination, server->connected_users[i].nickname);
+				if(!strcmp(server->connected_users[i].nickname, rtlp_packet_in->destination)) {
+					// TODO: send the sender
+					rtlp_packet_build(&rtlp_packet_out, RTLP_OPERATION_SERVER_MSG, rtlp_packet_in->source, rtlp_packet_in->destination, rtlp_packet_in->data, RTLP_TYPE_SERVER_TO_CLIENT_ASYNC, RTLP_RESPONSE_NONE, RTLP_TRANSPORT_PROTOCOL_TCP);
+
+					memset(packet_buf, 0, SERVER_BUF_LEN);		
+					memcpy(packet_buf, &rtlp_packet_out, SERVER_BUF_LEN);
+
 					printf("Sending private message to file descriptor: %d...\n", server->connected_users[i].user_socket_fd);
 					write(server->connected_users[i].user_socket_fd, packet_buf, SERVER_BUF_LEN);
 					break;
 				}
+
+				rtlp_packet_build(&rtlp_packet_out, RTLP_OPERATION_SERVER_MSG, rtlp_packet_in->source, rtlp_packet_in->destination, rtlp_packet_in->data, RTLP_TYPE_SERVER_TO_CLIENT_ASYNC, RTLP_RESPONSE_USER_NOT_FOUND, RTLP_TRANSPORT_PROTOCOL_TCP);
+
+				memset(packet_buf, 0, SERVER_BUF_LEN);		
+				memcpy(packet_buf, &rtlp_packet_out, SERVER_BUF_LEN);
+				write(user_socket_fd, packet_buf, SERVER_BUF_LEN);
 			}
 			break;
 

@@ -80,7 +80,7 @@ int main(int argc, char **argv) {
 		} else {
 			while(1) {
 				struct client client;
-				memcpy(&(client.nickname), &(rtlp_packet.operation_first_parameter), CLIENT_NICKNAME_LEN);
+				memcpy(&(client.nickname), &(rtlp_packet.data), CLIENT_NICKNAME_LEN);
 
 				// The parent process manages outcoming packets
 				
@@ -111,7 +111,10 @@ int main(int argc, char **argv) {
 				
 				print_rtlp_packet(&rtlp_packet);
 
-				if(rtlp_packet.operation == RTLP_OPERATION_CLIENT_QUIT) break;	
+				if(rtlp_packet.operation == RTLP_OPERATION_CLIENT_QUIT) {
+					kill(p, SIGKILL);		
+					break;
+				}
 			}
 		}
 	}		

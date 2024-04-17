@@ -16,11 +16,12 @@ int from_command_to_packet(char *command, struct rtlp_packet * rtlp_packet, stru
 	
 	// Reading command
 	uint8_t operation;
-	uint8_t first_parameter[RTLP_OPERATION_FIRST_PARAMETER_LEN];
-	uint8_t second_parameter[RTLP_OPERATION_SECOND_PARAMETER_LEN];
+	
+	uint8_t first_parameter[RTLP_DATA_LEN];
+	uint8_t second_parameter[RTLP_DATA_LEN];
 
-	memset(first_parameter, 0, RTLP_OPERATION_FIRST_PARAMETER_LEN);
-	memset(second_parameter, 0, RTLP_OPERATION_SECOND_PARAMETER_LEN);
+	memset(first_parameter, 0, RTLP_SOURCE_LEN);
+	memset(second_parameter, 0, RTLP_DESTINATION_LEN);
 	
 	int cmd_index = 0;
 
@@ -55,10 +56,10 @@ int from_command_to_packet(char *command, struct rtlp_packet * rtlp_packet, stru
 
 	memset(aux_buf, 0, CLIENT_CMD_LEN);
 	
-	// Reading 1st parameter of the command
+	// Reading source parameter
 	// Keeps words inside \' or \" as one single parameter
 	uint8_t reading_message = 0;
-	for(int i = 0; i < RTLP_OPERATION_FIRST_PARAMETER_LEN; i++) {
+	for(int i = 0; i < RTLP_DATA_LEN; i++) {
 		if(command[cmd_index] != ' ') {
 			if(command[cmd_index] == '\'' || command[cmd_index] == '\"') {
 				if(reading_message == 0) reading_message = 1;
@@ -75,8 +76,8 @@ int from_command_to_packet(char *command, struct rtlp_packet * rtlp_packet, stru
 		}
 	}
 	
-	// Reading 2nd parameter of the command
-	for(int i = 0; i < RTLP_OPERATION_SECOND_PARAMETER_LEN; i++) {
+	// Reading destination parameter
+	for(int i = 0; i < RTLP_DATA_LEN; i++) {
 		if(command[cmd_index] != ' ') {
 			if(command[cmd_index] == '\'' || command[cmd_index] == '\"') {
 				if(reading_message == 0) reading_message = 1;
@@ -93,35 +94,49 @@ int from_command_to_packet(char *command, struct rtlp_packet * rtlp_packet, stru
 		}
 	}
 
-	uint8_t operation_first_parameter[RTLP_OPERATION_FIRST_PARAMETER_LEN];
-	uint8_t operation_second_parameter[RTLP_OPERATION_SECOND_PARAMETER_LEN];
+	uint8_t source[RTLP_SOURCE_LEN];
+	uint8_t destination[RTLP_DESTINATION_LEN];	
+	uint8_t data[RTLP_DATA_LEN];
 	uint8_t type, response, transport_protocol;
 
-
-	memset(operation_first_parameter, 0, RTLP_OPERATION_FIRST_PARAMETER_LEN);
-	memset(operation_second_parameter, 0, RTLP_OPERATION_SECOND_PARAMETER_LEN);
+	memset(source, 0, RTLP_SOURCE_LEN);
+	memset(destination, 0, RTLP_DESTINATION_LEN);
+	memset(data, 0, RTLP_DATA_LEN);
 
 	switch(operation) {
 		case RTLP_OPERATION_CLIENT_SENDALL:
-			strcpy(operation_first_parameter, first_parameter); 
-			strcpy(operation_second_parameter, client->nickname);
+			// usage: sendall <message>
+			// source -> client's nickname
+			// destination -> nothing
+			// data -> message
+			
+			strcpy(source, client->nickname);
+			strcpy(data, first_parameter);
 			type = RTLP_TYPE_CLIENT_TO_SERVER_ACK;
 			response = RTLP_RESPONSE_NONE;
 			transport_protocol = RTLP_TRANSPORT_PROTOCOL_TCP;
 			
 			break;
 		case RTLP_OPERATION_CLIENT_SENDPV:
-			strcpy(operation_first_parameter, first_parameter);
-			strcpy(operation_second_parameter, second_parameter);
+			// usage: sendpv <message> <destination>
+			// source -> client's nickname
+			// destination -> destination nickname
+			// data -> message
+		
+			strcpy(source, client->nickname);
+			strcpy(data, first_parameter);
+			strcpy(destination, second_parameter);
 			type = RTLP_TYPE_CLIENT_TO_SERVER_ACK;
 			response = RTLP_RESPONSE_NONE;
 			transport_protocol = RTLP_TRANSPORT_PROTOCOL_TCP;
+		
 			break;
 		default:
 			break;
 	}
 
-	rtlp_packet_build(rtlp_packet, operation, operation_first_parameter, operation_second_parameter, type, response, transport_protocol);
+	rtlp_packet_build(rtlp_packet, operation, source, destination, data, type, response, transport_protocol);
+	print_rtlp_packet(rtlp_packet);
 	
 	return 0;
 }
