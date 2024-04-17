@@ -71,9 +71,12 @@ void * connection_handler(void * server) {
 		close(client_socket_fd);	
 		return NULL;
 	} else {
+		char new_nickname[SERVER_NICKNAME_LEN];
+		sprintf(new_nickname, "%s:%d", inet_ntoa(client_si.sin_addr), ntohs(client_si.sin_port));
+		
 		struct user u;
 		memset(&u, 0, sizeof(u));
-		create_user(&u, client_socket_fd, client_si, inet_ntoa(client_si.sin_addr));
+		create_user(&u, client_socket_fd, client_si, new_nickname);
 		add_new_user(s, &u);
 
 		s->num_connected_users += 1;	
@@ -85,8 +88,6 @@ void * connection_handler(void * server) {
 		uint8_t operation_second_parameter[RTLP_OPERATION_SECOND_PARAMETER_LEN];
 		memset(operation_first_parameter, 0, RTLP_OPERATION_FIRST_PARAMETER_LEN);
 		memset(operation_second_parameter, 0, RTLP_OPERATION_SECOND_PARAMETER_LEN);
-		char new_nickname[SERVER_NICKNAME_LEN];
-		sprintf(new_nickname, "%s:%d", inet_ntoa(client_si.sin_addr), ntohs(client_si.sin_port));
 		strcpy(operation_first_parameter, new_nickname); 	
 		uint8_t type = RTLP_TYPE_SERVER_TO_CLIENT_ACK;
 		uint8_t response = RTLP_RESPONSE_OK;
