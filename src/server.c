@@ -254,6 +254,7 @@ int process_packet(struct server * server, struct rtlp_packet * rtlp_packet_in) 
 				if(!strcmp(server->connected_users[i].nickname, rtlp_packet_in->operation_second_parameter)) {
 					printf("Sending private message to file descriptor: %d...\n", server->connected_users[i].user_socket_fd);
 					write(server->connected_users[i].user_socket_fd, packet_buf, SERVER_BUF_LEN);
+					break;
 				}
 			}
 			break;
