@@ -20,6 +20,9 @@ void die(char *s) {
 
 int main(int argc, char **argv) {
 
+	// TODO: check if there is always an ack
+	// TODO: build a allow/block transfering
+
 	if(argc != 3) {
 		printf("Usage: %s <hostname> <port>\n", argv[0]);
 		exit(0);

@@ -18,6 +18,7 @@ struct user {
 	int user_socket_fd;
 	struct sockaddr_in user_addr_info;
 	char nickname[SERVER_NICKNAME_LEN];
+	uint8_t allow_transfer;
 };
 
 struct server {
@@ -38,5 +39,6 @@ int remove_user(struct server * server, struct user * user);
 void list_users(struct server * server);
 void print_user_info(struct user * user);
 int process_packet(struct server * server, struct rtlp_packet * rtlp_packet_in);
+struct user * search_user(struct server * server, char nickname[SERVER_NICKNAME_LEN]);
 
 #endif

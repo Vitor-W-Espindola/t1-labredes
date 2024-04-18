@@ -9,8 +9,8 @@
 const char * cmd_name_sendall = "sendall";
 const char * cmd_name_sendpv = "sendpv";
 const char * cmd_name_transferpv = "transferpv";
-const char * cmd_name_transferpvaccept = "transferpvaccept";
-const char * cmd_name_transferpvdecline = "transferpvdecline";
+const char * cmd_name_enabletransfer = "enabletransfer";
+const char * cmd_name_disabletransfer = "disabletransfer";
 const char * cmd_name_nickname = "nickname";
 const char * cmd_name_list = "list";
 const char * cmd_name_quit = "quit";
@@ -42,10 +42,10 @@ int from_command_to_packet(char *command, struct rtlp_packet * rtlp_packet, stru
 				operation = RTLP_OPERATION_CLIENT_SENDPV;
 			else if(!strcmp(aux_buf, cmd_name_transferpv))
 				operation = RTLP_OPERATION_CLIENT_TRANSFERPV;
-			else if(!strcmp(aux_buf, cmd_name_transferpvaccept))
-				operation = RTLP_OPERATION_CLIENT_TRANSFERPV_ACCEPT;
-			else if(!strcmp(aux_buf, cmd_name_transferpvdecline))
-				operation = RTLP_OPERATION_CLIENT_TRANSFERPV_DECLINE;
+			else if(!strcmp(aux_buf, cmd_name_enabletransfer))
+				operation = RTLP_OPERATION_CLIENT_ENABLETRANSFER;
+			else if(!strcmp(aux_buf, cmd_name_disabletransfer))
+				operation = RTLP_OPERATION_CLIENT_DISABLETRANSFER;
 			else if(!strcmp(aux_buf, cmd_name_nickname))
 				operation = RTLP_OPERATION_CLIENT_NICKNAME;
 			else if(!strcmp(aux_buf, cmd_name_list))
@@ -151,7 +151,30 @@ int from_command_to_packet(char *command, struct rtlp_packet * rtlp_packet, stru
 			return 1;			
 
 			break;		
+		case RTLP_OPERATION_CLIENT_ENABLETRANSFER:
+			// usage: enabletransfer
+			// source -> source client's nickname
+			// destination -> empty
+			// data -> empty
 
+			strcpy(source, client->nickname);
+			type = RTLP_TYPE_CLIENT_TO_SERVER_REQ;
+			response = RTLP_RESPONSE_NONE;
+			transport_protocol = RTLP_TRANSPORT_PROTOCOL_TCP;
+
+			break;
+		case RTLP_OPERATION_CLIENT_DISABLETRANSFER:
+			// usage: disabletransfer
+			// source -> source client's nickname
+			// destination -> empty
+			// data -> empty
+
+			strcpy(source, client->nickname);
+			type = RTLP_TYPE_CLIENT_TO_SERVER_REQ;
+			response = RTLP_RESPONSE_NONE;
+			transport_protocol = RTLP_TRANSPORT_PROTOCOL_TCP;
+
+			break;
 		default:
 			break;
 	}
