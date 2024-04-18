@@ -8,6 +8,7 @@
 #include <netinet/in.h>
 #include <netdb.h>
 #include <signal.h>
+#include <pthread.h>
 
 #include "../src/client.h"
 #include "../src/server.h"
@@ -73,14 +74,27 @@ int main(int argc, char **argv) {
 				memset(&rtlp_packet, 0, sizeof(rtlp_packet));
 				memcpy(&rtlp_packet, packet_buf, SERVER_BUF_LEN);	
 
-				print_rtlp_packet(&rtlp_packet);				
-
-				// The packet must be processed accordingly to the type of packet ...
+				switch(rtlp_packet.type) {
+					case RTLP_TYPE_SERVER_TO_CLIENT_PB_ASYNC:
+						printf("\n(All) %s: %s\n", rtlp_packet.source, rtlp_packet.data);
+						fflush(stdout);
+						break;
+					case RTLP_TYPE_SERVER_TO_CLIENT_PV_ASYNC:
+						printf("\n(Private) %s: %s\n", rtlp_packet.source, rtlp_packet.data);
+						fflush(stdout);
+						break;
+					case RTLP_TYPE_SERVER_TO_CLIENT_CHUNK:
+						printf("\n(File) %s: %s\n", rtlp_packet.source, rtlp_packet.data);
+						fflush(stdout);
+						break;	
+					default:
+						break;
+				}
 			}
 		} else {
+			struct client client;
+			strcpy(client.nickname, rtlp_packet.data);
 			while(1) {
-				struct client client;
-				memcpy(&(client.nickname), &(rtlp_packet.data), CLIENT_NICKNAME_LEN);
 
 				// The parent process manages outcoming packets
 				
@@ -88,19 +102,28 @@ int main(int argc, char **argv) {
 				uint8_t cmd_buf[CLIENT_CMD_LEN];
 				memset(cmd_buf, 0, CLIENT_CMD_LEN);
 				
-				printf("Command: ");
-			
 				fgets(cmd_buf, CLIENT_CMD_LEN, stdin);
 				cmd_buf[strcspn(cmd_buf, "\r\n")] = ' ';
 				cmd_buf[CLIENT_CMD_LEN - 1] = '\0';
 				
 				// Translate command to rtlp_packet
 				memset(&rtlp_packet, 0, sizeof(rtlp_packet));
-				if(from_command_to_packet(cmd_buf, &rtlp_packet, &client) == 1) {
+				int from_command_to_packet_res = from_command_to_packet(cmd_buf, &rtlp_packet, &client);
+				if(from_command_to_packet_res == -1 || rtlp_packet.operation == RTLP_OPERATION_CLIENT_QUIT) {
+					// Error
 					kill(p, SIGKILL);
-					printf("Invalid command.\n");
+					printf("Error.\n");
 					break;
-				};
+				} else if(from_command_to_packet_res == 1) {
+					// File transfer thread	
+					struct file_manager_param file_manager_param = {
+						.server_socket_fd = socket_fd,
+						.rtlp_packet = rtlp_packet 
+					};
+					pthread_t file_manager_thread_id;
+					pthread_create(&file_manager_thread_id, NULL, file_manager, &file_manager_param);
+					continue;
+				}
 					
 				// Sends rtlp packet through socket
 				memset(packet_buf, 0, SERVER_BUF_LEN);
@@ -109,12 +132,6 @@ int main(int argc, char **argv) {
 				int write_len = write(socket_fd, packet_buf, SERVER_BUF_LEN);
 				if (write_len < 0) die("write");
 				
-				print_rtlp_packet(&rtlp_packet);
-
-				if(rtlp_packet.operation == RTLP_OPERATION_CLIENT_QUIT) {
-					kill(p, SIGKILL);		
-					break;
-				}
 			}
 		}
 	}		

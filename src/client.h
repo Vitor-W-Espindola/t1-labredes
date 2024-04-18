@@ -19,7 +19,13 @@ struct client {
 	char nickname[CLIENT_NICKNAME_LEN];
 };
 
+struct file_manager_param {
+	int server_socket_fd;
+	struct rtlp_packet rtlp_packet;
+};
+
 // In-place function which processes a string (the full command line) and populates a RTLP packet.
 int from_command_to_packet(char *command, struct rtlp_packet * rtlp_packet, struct client * client);
+void * file_manager();
 
 #endif

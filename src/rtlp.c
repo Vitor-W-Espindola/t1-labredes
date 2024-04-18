@@ -29,5 +29,5 @@ uint8_t rtlp_packet_build(
 
 void print_rtlp_packet(struct rtlp_packet * rtlp_packet) {
 	printf("RTLP Packet\n");
-	printf("operation: %d\nosource: %s\n destination: %s\ndata: %s\ntype: %d\nresponse: %d\ntransport_protocol: %d\n", rtlp_packet->operation, rtlp_packet->source, rtlp_packet->destination, rtlp_packet->data, rtlp_packet->type, rtlp_packet->response, rtlp_packet->transport_protocol);
+	printf("operation: %d\nsource: %s\ndestination: %s\ndata: %s\ntype: %d\nresponse: %d\ntransport_protocol: %d\n", rtlp_packet->operation, rtlp_packet->source, rtlp_packet->destination, rtlp_packet->data, rtlp_packet->type, rtlp_packet->response, rtlp_packet->transport_protocol);
 }

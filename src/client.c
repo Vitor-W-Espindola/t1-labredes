@@ -1,5 +1,8 @@
 #include <string.h>
+#include <stdio.h>
+#include <unistd.h>
 
+#include "server.h"
 #include "client.h"
 #include "rtlp.h"
 
@@ -49,14 +52,14 @@ int from_command_to_packet(char *command, struct rtlp_packet * rtlp_packet, stru
 				operation = RTLP_OPERATION_CLIENT_LIST;
 			else if(!strcmp(aux_buf, cmd_name_quit))
 				operation = RTLP_OPERATION_CLIENT_QUIT;
-			else return 1; 
+			else return -1; 
 			break;
 		}
 	}
 
 	memset(aux_buf, 0, CLIENT_CMD_LEN);
 	
-	// Reading source parameter
+	// Reading first parameter
 	// Keeps words inside \' or \" as one single parameter
 	uint8_t reading_message = 0;
 	for(int i = 0; i < RTLP_DATA_LEN; i++) {
@@ -76,7 +79,7 @@ int from_command_to_packet(char *command, struct rtlp_packet * rtlp_packet, stru
 		}
 	}
 	
-	// Reading destination parameter
+	// Reading second parameter
 	for(int i = 0; i < RTLP_DATA_LEN; i++) {
 		if(command[cmd_index] != ' ') {
 			if(command[cmd_index] == '\'' || command[cmd_index] == '\"') {
@@ -115,7 +118,7 @@ int from_command_to_packet(char *command, struct rtlp_packet * rtlp_packet, stru
 			type = RTLP_TYPE_CLIENT_TO_SERVER_ACK;
 			response = RTLP_RESPONSE_NONE;
 			transport_protocol = RTLP_TRANSPORT_PROTOCOL_TCP;
-			
+		
 			break;
 		case RTLP_OPERATION_CLIENT_SENDPV:
 			// usage: sendpv <message> <destination>
@@ -131,12 +134,56 @@ int from_command_to_packet(char *command, struct rtlp_packet * rtlp_packet, stru
 			transport_protocol = RTLP_TRANSPORT_PROTOCOL_TCP;
 		
 			break;
+		case RTLP_OPERATION_CLIENT_TRANSFERPV:
+			// usage: transferpv <filename> <destination>
+			// source -> source client's nickname
+			// destination -> destination client's nickname
+			// data -> filename and dir
+			
+			strcpy(source, client->nickname);
+			strcpy(data, first_parameter);
+			strcpy(destination, second_parameter);
+			type = RTLP_TYPE_CLIENT_TO_SERVER_CHUNK;
+			response = RTLP_RESPONSE_NONE;
+			transport_protocol = RTLP_TRANSPORT_PROTOCOL_TCP;
+			
+			rtlp_packet_build(rtlp_packet, operation, source, destination, data, type, response, transport_protocol);
+			return 1;			
+
+			break;		
+
 		default:
 			break;
 	}
 
 	rtlp_packet_build(rtlp_packet, operation, source, destination, data, type, response, transport_protocol);
-	print_rtlp_packet(rtlp_packet);
 	
 	return 0;
+}
+
+void * file_manager(void * file_manager_param) {
+	struct file_manager_param * param = (struct file_manager_param *) file_manager_param;
+	struct rtlp_packet rtlp_packet = param->rtlp_packet;
+	FILE *fptr;
+	fptr = fopen(rtlp_packet.data, "r");	
+	if(fptr == NULL) {
+		printf("Failed to open file %s\n", rtlp_packet.data);
+		return NULL;
+	}
+	int user_socket_fd;
+
+	char packet_buf[SERVER_BUF_LEN];
+
+	while(1) {
+		memset(rtlp_packet.data, 0, RTLP_DATA_LEN);
+		int r_len = fread(&rtlp_packet.data, 1, RTLP_DATA_LEN, fptr);
+		
+		memset(packet_buf, 0, SERVER_BUF_LEN);
+		memcpy(packet_buf, &rtlp_packet, SERVER_BUF_LEN);		
+		
+		int w_len = write(param->server_socket_fd, packet_buf, SERVER_BUF_LEN); 
+		// printf("%s\n\n", rtlp_packet.data);
+		fflush(stdout);
+		if(r_len < RTLP_DATA_LEN) break;
+	}
 }

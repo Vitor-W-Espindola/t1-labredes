@@ -31,7 +31,7 @@ struct server {
 int create_server(struct server * server);
 void * connection_handler(void * server);
 int start_server(struct server * server);
-int send_response_to_client(int client_socket_fd, uint8_t response);
+int send_response_to_client(struct user * user, uint8_t response);
 int create_user(struct user * user, int user_socket_fd, struct sockaddr_in user_addr_info, char nickname[SERVER_NICKNAME_LEN]);
 int add_new_user(struct server * server, struct user * user);
 int remove_user(struct server * server, struct user * user);
