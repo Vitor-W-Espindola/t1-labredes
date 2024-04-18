@@ -78,6 +78,12 @@ int main(int argc, char **argv) {
 				memcpy(&rtlp_packet, packet_buf, SERVER_BUF_LEN);	
 
 				switch(rtlp_packet.type) {
+					case RTLP_TYPE_SERVER_TO_CLIENT_WELCOME:
+						printf("%s\n", rtlp_packet.data);
+						break;
+					case RTLP_TYPE_SERVER_TO_CLIENT_ACK:
+						// printf("Packet sent. Response: %d\n", rtlp_packet.response);
+						break;					
 					case RTLP_TYPE_SERVER_TO_CLIENT_PB_ASYNC:
 						printf("\n(All) %s: %s\n", rtlp_packet.source, rtlp_packet.data);
 						fflush(stdout);

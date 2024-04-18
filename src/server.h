@@ -10,7 +10,7 @@
 
 #define SERVER_PORT 8888
 #define SERVER_BUF_LEN 644
-#define SERVER_MAX_CONNECTED_USERS 2
+#define SERVER_MAX_CONNECTED_USERS 3
 #define SERVER_MAX_PENDING_CONNECTIONS 5
 #define SERVER_NICKNAME_LEN 16
 
@@ -40,5 +40,6 @@ void list_users(struct server * server);
 void print_user_info(struct user * user);
 int process_packet(struct server * server, struct rtlp_packet * rtlp_packet_in);
 struct user * search_user(struct server * server, char nickname[SERVER_NICKNAME_LEN]);
+int ack(struct server * server, struct rtlp_packet * rtlp_packet_in, int8_t response);
 
 #endif
