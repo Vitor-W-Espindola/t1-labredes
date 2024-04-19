@@ -20,9 +20,6 @@ void die(char *s) {
 
 int main(int argc, char **argv) {
 
-	// TODO: check if there is always an ack
-	// TODO: build a allow/block transfering
-
 	if(argc != 3) {
 		printf("Usage: %s <hostname> <port>\n", argv[0]);
 		exit(0);
@@ -82,7 +79,10 @@ int main(int argc, char **argv) {
 						printf("%s\n", rtlp_packet.data);
 						break;
 					case RTLP_TYPE_SERVER_TO_CLIENT_ACK:
-						// printf("Packet sent. Response: %d\n", rtlp_packet.response);
+						if(rtlp_packet.response == RTLP_RESPONSE_USER_NOT_FOUND)
+							printf("User not online.\n");
+						else if(rtlp_packet.response == RTLP_RESPONSE_USER_NOT_AVAILABLE)
+							printf("User is not available for file transfering.\n");
 						break;					
 					case RTLP_TYPE_SERVER_TO_CLIENT_PB_ASYNC:
 						printf("\n(All) %s: %s\n", rtlp_packet.source, rtlp_packet.data);
@@ -93,8 +93,16 @@ int main(int argc, char **argv) {
 						fflush(stdout);
 						break;
 					case RTLP_TYPE_SERVER_TO_CLIENT_CHUNK:
+						
 						printf("\n(File) %s: %s\n", rtlp_packet.source, rtlp_packet.data);
 						fflush(stdout);
+						
+						FILE *fptr;
+						fptr = fopen("file.txt", "a+");
+						if(fptr == NULL) break;
+
+						fwrite(rtlp_packet.data, 1, RTLP_DATA_LEN, fptr);
+						fclose(fptr);
 						break;	
 					default:
 						break;
@@ -118,11 +126,14 @@ int main(int argc, char **argv) {
 				// Translate command to rtlp_packet
 				memset(&rtlp_packet, 0, sizeof(rtlp_packet));
 				int from_command_to_packet_res = from_command_to_packet(cmd_buf, &rtlp_packet, &client);
-				if(from_command_to_packet_res == -1 || rtlp_packet.operation == RTLP_OPERATION_CLIENT_QUIT) {
+				if(from_command_to_packet_res == -1) {
 					// Error
 					kill(p, SIGKILL);
 					printf("Error.\n");
 					break;
+				} else if(rtlp_packet.operation == RTLP_OPERATION_CLIENT_QUIT) {
+					kill(p, SIGKILL);
+					break;	
 				} else if(from_command_to_packet_res == 1) {
 					// File transfer thread	
 					struct file_manager_param file_manager_param = {
@@ -133,8 +144,7 @@ int main(int argc, char **argv) {
 					pthread_create(&file_manager_thread_id, NULL, file_manager, &file_manager_param);
 					continue;
 				}
-					
-				// Sends rtlp packet through socket
+
 				memset(packet_buf, 0, SERVER_BUF_LEN);
 				memcpy(packet_buf, &rtlp_packet, sizeof(rtlp_packet));
 				

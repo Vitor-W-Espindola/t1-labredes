@@ -41,8 +41,7 @@ int create_server(struct server * server) {
 	server->max_connected_users = SERVER_MAX_CONNECTED_USERS;
 	// Empty connected users buffer
 	for(int i = 0; i < SERVER_MAX_CONNECTED_USERS; i++) {
-		struct user connected_user;
-		memset(&connected_user, 0, sizeof(struct user));
+		struct user connected_user = { 0 };
 		server->connected_users[i] = connected_user; 
 	}
 	server->server_socket_fd = server_socket_fd;
@@ -60,9 +59,9 @@ void * connection_handler(void * server) {
 
 	printf("Client connected %s:%d\n", inet_ntoa(client_si.sin_addr), ntohs(client_si.sin_port));
 
-	struct user u;
+	struct user u = { 0 };
 	memset(&u, 0, sizeof(u));
-	char new_nickname[SERVER_NICKNAME_LEN];
+	char new_nickname[SERVER_NICKNAME_LEN] = { 0 };
 	sprintf(new_nickname, "%s:%d", inet_ntoa(client_si.sin_addr), ntohs(client_si.sin_port));
 	u.allow_transfer = 0;
 	create_user(&u, client_socket_fd, client_si, new_nickname);
@@ -156,7 +155,7 @@ void * connection_handler(void * server) {
 		}
 		remove_user(s, &u);
 		s->num_connected_users -= 1;
-		printf("Closed connenction with %s:%d\n", inet_ntoa(client_si.sin_addr), ntohs(client_si.sin_port));
+		printf("Closed connection with %s:%d\n", inet_ntoa(client_si.sin_addr), ntohs(client_si.sin_port));
 		close(client_socket_fd);
 	}	
 }
@@ -173,33 +172,6 @@ int start_server(struct server * server) {
 			pthread_create(&server_thread_id, NULL, connection_handler, server);
 		}
 	}
-}
-
-int send_response_to_client(struct user * user, uint8_t response) {
-
-	// Sends an response of type RTLP_RESPONSE_response to client
-	struct rtlp_packet rtlp_packet;
-	uint8_t packet_buf[SERVER_BUF_LEN];
-
-	uint8_t source[RTLP_SOURCE_LEN], destination[RTLP_DESTINATION_LEN], data[RTLP_DATA_LEN];
-	memset(source, 0, RTLP_SOURCE_LEN);
-	memset(destination, 0, RTLP_DESTINATION_LEN);
-	memset(data, 0, RTLP_DATA_LEN);
-	memset(&rtlp_packet, 0, SERVER_BUF_LEN);	
-
-	strcpy(destination, user->nickname);
-	
-	rtlp_packet_build(&rtlp_packet, RTLP_OPERATION_SERVER_MSG, source, destination, data, RTLP_TYPE_SERVER_TO_CLIENT_ACK, response, RTLP_TRANSPORT_PROTOCOL_TCP);
-
-	printf("\n");
-	printf("OUT:");
-	print_rtlp_packet(&rtlp_packet);
-	printf("\n");
-	
-	memset(packet_buf, 0, SERVER_BUF_LEN);		
-	memcpy(packet_buf, &rtlp_packet, SERVER_BUF_LEN);
-
-	return write(user->user_socket_fd, packet_buf, SERVER_BUF_LEN);
 }
 
 int create_user(struct user * user, int user_socket_fd, struct sockaddr_in user_addr_info, char nickname[SERVER_NICKNAME_LEN]) {
@@ -351,6 +323,21 @@ int process_packet(struct server * server, struct rtlp_packet * rtlp_packet_in) 
 			}
 
 			break;
+		
+		case RTLP_OPERATION_CLIENT_NICKNAME:
+			printf("teste\n");
+			memcpy(nickname_aux, rtlp_packet_in->source, SERVER_NICKNAME_LEN);
+			u = search_user(server, nickname_aux);
+			if(u != NULL) {
+				print_user_info(u);
+				memcpy(nickname_aux, rtlp_packet_in->data, SERVER_NICKNAME_LEN);
+				if(strlen(rtlp_packet_in->data) <= SERVER_NICKNAME_LEN) {
+					// TODO: fix
+					printf("%x\n", u);
+					ack(server, rtlp_packet_in, RTLP_RESPONSE_OK);
+				} else ack(server, rtlp_packet_in, RTLP_RESPONSE_NICKNAME_TOO_LONG);
+			}
+			break;
 		default:
 			break;
 	}
@@ -371,15 +358,18 @@ int ack(struct server * server, struct rtlp_packet * rtlp_packet_in, int8_t resp
 	struct rtlp_packet rtlp_packet_out;
 	char nickname_aux[SERVER_NICKNAME_LEN];
 	uint8_t packet_buf[SERVER_BUF_LEN];
+	uint8_t source[RTLP_SOURCE_LEN], data[RTLP_DATA_LEN];
+	memset(source, 0, RTLP_SOURCE_LEN);
+	memset(data, 0, RTLP_DATA_LEN);
 	
 	memset(&rtlp_packet_out, 0, sizeof(struct rtlp_packet));
+	rtlp_packet_build(&rtlp_packet_out, RTLP_OPERATION_SERVER_MSG, source, rtlp_packet_in->source, data, RTLP_TYPE_SERVER_TO_CLIENT_ACK, response, RTLP_TRANSPORT_PROTOCOL_TCP);
+	memset(packet_buf, 0, SERVER_BUF_LEN);		
+	memcpy(packet_buf, &rtlp_packet_out, SERVER_BUF_LEN);
+	
 	memset(nickname_aux, 0, SERVER_NICKNAME_LEN);
 	memcpy(nickname_aux, rtlp_packet_in->source, SERVER_NICKNAME_LEN);
 	u = search_user(server, nickname_aux);
-	rtlp_packet_build(&rtlp_packet_out, RTLP_OPERATION_SERVER_MSG, rtlp_packet_in->source, rtlp_packet_in->destination, rtlp_packet_in->data, RTLP_TYPE_SERVER_TO_CLIENT_ACK, response, RTLP_TRANSPORT_PROTOCOL_TCP);
-	memset(packet_buf, 0, SERVER_BUF_LEN);		
-	memcpy(packet_buf, &rtlp_packet_out, SERVER_BUF_LEN);
-
 	int w_len = write(u->user_socket_fd, packet_buf, SERVER_BUF_LEN);
 
 	printf("OUT:\n");

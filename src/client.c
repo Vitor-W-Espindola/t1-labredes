@@ -28,36 +28,36 @@ int from_command_to_packet(char *command, struct rtlp_packet * rtlp_packet, stru
 	
 	int cmd_index = 0;
 
-	char aux_buf[CLIENT_CMD_LEN];
-	memset(aux_buf, 0, CLIENT_CMD_LEN);
+	char cmd[CLIENT_CMD_LEN];
+	memset(cmd, 0, CLIENT_CMD_LEN);
 	
-	// Reading name of the command and setting operation (or returning failure)
+	// Reading name of the command and setting operation (or return failure)
 	for(int i = 0; i < CLIENT_CMD_LEN; i++) {
-		if(command[cmd_index] != ' ') aux_buf[i] = command[cmd_index++];
+		if(command[cmd_index] != ' ') cmd[i] = command[cmd_index++];
 		else {
 			cmd_index++;
-			if(!strcmp(aux_buf, cmd_name_sendall))
+			if(!strcmp(cmd, cmd_name_sendall))
 				operation = RTLP_OPERATION_CLIENT_SENDALL; 
-			else if(!strcmp(aux_buf, cmd_name_sendpv))
+			else if(!strcmp(cmd, cmd_name_sendpv))
 				operation = RTLP_OPERATION_CLIENT_SENDPV;
-			else if(!strcmp(aux_buf, cmd_name_transferpv))
+			else if(!strcmp(cmd, cmd_name_transferpv))
 				operation = RTLP_OPERATION_CLIENT_TRANSFERPV;
-			else if(!strcmp(aux_buf, cmd_name_enabletransfer))
+			else if(!strcmp(cmd, cmd_name_enabletransfer))
 				operation = RTLP_OPERATION_CLIENT_ENABLETRANSFER;
-			else if(!strcmp(aux_buf, cmd_name_disabletransfer))
+			else if(!strcmp(cmd, cmd_name_disabletransfer))
 				operation = RTLP_OPERATION_CLIENT_DISABLETRANSFER;
-			else if(!strcmp(aux_buf, cmd_name_nickname))
+			else if(!strcmp(cmd, cmd_name_nickname))
 				operation = RTLP_OPERATION_CLIENT_NICKNAME;
-			else if(!strcmp(aux_buf, cmd_name_list))
+			else if(!strcmp(cmd, cmd_name_list))
 				operation = RTLP_OPERATION_CLIENT_LIST;
-			else if(!strcmp(aux_buf, cmd_name_quit))
+			else if(!strcmp(cmd, cmd_name_quit))
 				operation = RTLP_OPERATION_CLIENT_QUIT;
 			else return -1; 
 			break;
 		}
 	}
-
-	memset(aux_buf, 0, CLIENT_CMD_LEN);
+	
+	memset(cmd, 0, CLIENT_CMD_LEN);
 	
 	// Reading first parameter
 	// Keeps words inside \' or \" as one single parameter
@@ -78,7 +78,7 @@ int from_command_to_packet(char *command, struct rtlp_packet * rtlp_packet, stru
 			else first_parameter[i] = 0x20; // White space
 		}
 	}
-	
+
 	// Reading second parameter
 	for(int i = 0; i < RTLP_DATA_LEN; i++) {
 		if(command[cmd_index] != ' ') {
@@ -175,6 +175,18 @@ int from_command_to_packet(char *command, struct rtlp_packet * rtlp_packet, stru
 			transport_protocol = RTLP_TRANSPORT_PROTOCOL_TCP;
 
 			break;
+		case RTLP_OPERATION_CLIENT_NICKNAME:
+			// usage: nickname <new_nickname>
+			// source -> source client's nickname
+			// destination -> empy
+			// data -> new_nickname
+
+			strcpy(source, client->nickname);
+			strcpy(data, first_parameter); 
+			type = RTLP_TYPE_CLIENT_TO_SERVER_REQ;
+			response = RTLP_RESPONSE_NONE;
+			transport_protocol = RTLP_TRANSPORT_PROTOCOL_UDP;
+			break;
 		default:
 			break;
 	}
@@ -205,7 +217,6 @@ void * file_manager(void * file_manager_param) {
 		memcpy(packet_buf, &rtlp_packet, SERVER_BUF_LEN);		
 		
 		int w_len = write(param->server_socket_fd, packet_buf, SERVER_BUF_LEN); 
-		// printf("%s\n\n", rtlp_packet.data);
 		fflush(stdout);
 		if(r_len < RTLP_DATA_LEN) break;
 	}
