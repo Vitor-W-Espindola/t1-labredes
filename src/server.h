@@ -12,7 +12,7 @@
 #define SERVER_BUF_LEN 644
 #define SERVER_MAX_CONNECTED_USERS 3
 #define SERVER_MAX_PENDING_CONNECTIONS 5
-#define SERVER_NICKNAME_LEN 16
+#define SERVER_NICKNAME_LEN 32
 
 struct user {
 	int user_socket_fd;

@@ -93,11 +93,13 @@ int main(int argc, char **argv) {
 						else if(rtlp_packet.response == RTLP_RESPONSE_NEW_NICKNAME) {
 							memcpy(client->nickname, rtlp_packet.data, CLIENT_NICKNAME_LEN);
 							printf("Your nickname has been changed.\n");
-							fflush(stdout);
-						} else if(rtlp_packet.response == RTLP_RESPONSE_LISTUSERS) {
+						} else if(rtlp_packet.response == RTLP_RESPONSE_LISTUSERS)
 							printf("\n%s\n", rtlp_packet.data);
-							fflush(stdout);
-						}
+						else if(rtlp_packet.response == RTLP_RESPONSE_TRANSFERENABLED)
+							printf("File transfering enable.\n");
+						else if(rtlp_packet.response == RTLP_RESPONSE_TRANSFERDISABLED)
+							printf("File transfering disable.\n");
+						fflush(stdout);
 						break;					
 					case RTLP_TYPE_SERVER_TO_CLIENT_PB_ASYNC:
 						printf("\n(All) %s: %s\n", rtlp_packet.source, rtlp_packet.data);
@@ -140,10 +142,8 @@ int main(int argc, char **argv) {
 				memset(&rtlp_packet, 0, sizeof(rtlp_packet));
 				int from_command_to_packet_res = from_command_to_packet(cmd_buf, &rtlp_packet, client);
 				if(from_command_to_packet_res == -1) {
-					// Error
-					kill(p, SIGKILL);
-					printf("Error.\n");
-					break;
+					printf("Wrong command.\n");
+					continue;
 				} else if(rtlp_packet.operation == RTLP_OPERATION_CLIENT_QUIT) {
 					kill(p, SIGKILL);
 					break;	
@@ -164,6 +164,11 @@ int main(int argc, char **argv) {
 				int write_len = write(socket_fd, packet_buf, SERVER_BUF_LEN);
 				if (write_len < 0) die("write");
 				
+				if(from_command_to_packet_res == 2) {
+					// Quit
+					kill(p, SIGKILL);
+					break;
+				}
 			}
 		}
 	}		

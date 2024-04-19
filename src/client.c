@@ -190,7 +190,7 @@ int from_command_to_packet(char *command, struct rtlp_packet * rtlp_packet, stru
 			break;
 		case RTLP_OPERATION_CLIENT_LISTUSERS:
 			// usage: listusers
-			// source -> source clients's nickname
+			// source -> source client's nickname
 			// destination -> empty
 			// data -> empty
 			strcpy(source, client->nickname);
@@ -199,6 +199,18 @@ int from_command_to_packet(char *command, struct rtlp_packet * rtlp_packet, stru
 			transport_protocol = RTLP_TRANSPORT_PROTOCOL_TCP;
 			
 			break;
+		case RTLP_OPERATION_CLIENT_QUIT:
+			// usage: quit
+			// source -> source client's nickname
+			// destination -> empty
+			// data -> empty
+			strcpy(source, client->nickname);
+			type = RTLP_TYPE_CLIENT_TO_SERVER_REQ;
+			response = RTLP_RESPONSE_NONE;
+			transport_protocol = RTLP_TRANSPORT_PROTOCOL_TCP;
+			rtlp_packet_build(rtlp_packet, operation, source, destination, data, type, response, transport_protocol);
+			
+			return 2;
 		default:
 			break;
 	}

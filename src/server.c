@@ -138,6 +138,7 @@ void * connection_handler(void * server) {
 		memset(&buf_in, 0, SERVER_BUF_LEN);
 		memset(&packet_buf, 0, SERVER_BUF_LEN);
 		int recv_len = 0;
+		int process_packet_res = 0;
 		while(1) {
 			// Receives data from client, blocking the thread
 			recv_len = read(client_socket_fd, buf_in, SERVER_BUF_LEN);
@@ -147,14 +148,18 @@ void * connection_handler(void * server) {
 			memcpy(&rtlp_packet_in, buf_in, SERVER_BUF_LEN);
 
 			// Process packet
-			process_packet(s, &rtlp_packet_in);
+			int process_packet_res = process_packet(s, &rtlp_packet_in);
+			
+			if(process_packet_res == 1) break; // Client quitted
 
 			for(int i = 0; i < SERVER_BUF_LEN; i++)
 				printf("%x ", buf_in[i]);
 			printf("\n");
 		}
-		remove_user(s, &u);
-		s->num_connected_users -= 1;
+		if(process_packet_res == 0) {
+			remove_user(s, &u);
+			s->num_connected_users -= 1;
+		}
 		printf("Closed connection with %s:%d\n", inet_ntoa(client_si.sin_addr), ntohs(client_si.sin_port));
 		close(client_socket_fd);
 	}	
@@ -308,7 +313,7 @@ int process_packet(struct server * server, struct rtlp_packet * rtlp_packet_in) 
 			if(u != NULL) {
 				print_user_info(u);
 				u->allow_transfer = 1;	
-				ack(server, rtlp_packet_in, RTLP_RESPONSE_OK, data);	
+				ack(server, rtlp_packet_in, RTLP_RESPONSE_TRANSFERENABLED, data);	
 			}
 			
 			break;
@@ -319,7 +324,7 @@ int process_packet(struct server * server, struct rtlp_packet * rtlp_packet_in) 
 			if(u != NULL) {
 				print_user_info(u);
 				u->allow_transfer = 0;	
-				ack(server, rtlp_packet_in, RTLP_RESPONSE_OK, data);	
+				ack(server, rtlp_packet_in, RTLP_RESPONSE_TRANSFERDISABLED, data);	
 			}
 
 			break;
@@ -361,7 +366,7 @@ int process_packet(struct server * server, struct rtlp_packet * rtlp_packet_in) 
 				strcpy(users_buf, "Online users:");
 				int users_buf_index = strlen(users_buf);
 				users_buf[users_buf_index++] = '\n';
-				for(int i = 0; i < server->num_connected_users; i++) {	
+				for(int i = 0; i < SERVER_MAX_CONNECTED_USERS; i++) {	
 					strcpy(&users_buf[users_buf_index], server->connected_users[i].nickname);
 					users_buf_index = strlen(users_buf);
 					users_buf[users_buf_index++] = '\n';
@@ -373,7 +378,20 @@ int process_packet(struct server * server, struct rtlp_packet * rtlp_packet_in) 
 				ack(server, rtlp_packet_in, RTLP_RESPONSE_LISTUSERS, data);
 			}
 			break;
+		case RTLP_OPERATION_CLIENT_QUIT:
+			printf("\n");
+			printf("Processing RTLP_OPERATION_CLIENT_QUIT operation...");
+			print_rtlp_packet(rtlp_packet_in);
+			printf("\n");
 
+			memcpy(nickname_aux, rtlp_packet_in->source, SERVER_NICKNAME_LEN);
+			u = search_user(server, nickname_aux);
+			if(u != NULL) {
+				remove_user(server, u);
+				server->num_connected_users -= 1;
+			}
+			return 1;
+			break;
 		default:
 			break;
 	}
@@ -382,7 +400,7 @@ int process_packet(struct server * server, struct rtlp_packet * rtlp_packet_in) 
 
 struct user * search_user(struct server * server, char nickname[SERVER_NICKNAME_LEN]) {	
 	// Searches for the destination
-	for(int i = 0; i < server->num_connected_users; i++) {
+	for(int i = 0; i < SERVER_MAX_CONNECTED_USERS; i++) {
 		if(!strcmp(server->connected_users[i].nickname, nickname))
 			return &(server->connected_users[i]);
 	}

@@ -6,7 +6,7 @@
 #include "../src/rtlp.h"
 
 #define CLIENT_CMD_LEN 256
-#define CLIENT_NICKNAME_LEN 16
+#define CLIENT_NICKNAME_LEN 32
 #define CLIENT_FILENAME_LEN 16
 
 extern const char * cmd_name_sendall;
