@@ -54,6 +54,7 @@ int main(int argc, char **argv) {
 
 	// Requests a nickname
 	struct rtlp_packet rtlp_packet;
+	memset(rtlp_packet, 0, SERVER_BUF_LEN);
 	uint8_t packet_buf[SERVER_BUF_LEN];
 	memset(packet_buf, 0, SERVER_BUF_LEN);
 	rtlp_packet.operation = RTLP_OPERATION_CLIENT_REQNICKNAME;
