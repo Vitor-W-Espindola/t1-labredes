@@ -24,6 +24,8 @@ struct client {
 
 struct file_manager_param {
 	int server_socket_fd;
+	struct sockaddr_in server_addr;
+	int server_addr_length;
 	struct rtlp_packet rtlp_packet;
 };
 
