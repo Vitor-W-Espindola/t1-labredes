@@ -9,6 +9,7 @@
 #include <netdb.h>
 #include <signal.h>
 #include <pthread.h>
+#include <sys/mman.h>
 
 #include "../src/client.h"
 #include "../src/server.h"
@@ -53,6 +54,10 @@ int main(int argc, char **argv) {
 	memset(&rtlp_packet, 0, sizeof(rtlp_packet));
 	memcpy(&rtlp_packet, packet_buf, SERVER_BUF_LEN);	
 	
+	// Hold a copy of client structure
+	void * shmem = mmap(NULL, sizeof(struct client), PROT_READ | PROT_WRITE, MAP_SHARED | MAP_ANONYMOUS, -1, 0);
+	struct client * client = (struct client *) shmem;
+
 	if(rtlp_packet.response == RTLP_RESPONSE_FULL_SERVER) printf("The server is full.\n");
 	else {
 		pid_t p;
@@ -61,6 +66,8 @@ int main(int argc, char **argv) {
 			close(socket_fd);
 			exit(0);
 		} else if (p == 0) {
+			// Copy the default nickname sent by the server
+			memcpy(client->nickname, rtlp_packet.data, CLIENT_NICKNAME_LEN);
 			while(1) {
 				// The child process manages incoming packets
 
@@ -83,6 +90,14 @@ int main(int argc, char **argv) {
 							printf("User not online.\n");
 						else if(rtlp_packet.response == RTLP_RESPONSE_USER_NOT_AVAILABLE)
 							printf("User is not available for file transfering.\n");
+						else if(rtlp_packet.response == RTLP_RESPONSE_NEW_NICKNAME) {
+							memcpy(client->nickname, rtlp_packet.data, CLIENT_NICKNAME_LEN);
+							printf("Your nickname has been changed.\n");
+							fflush(stdout);
+						} else if(rtlp_packet.response == RTLP_RESPONSE_LISTUSERS) {
+							printf("\n%s\n", rtlp_packet.data);
+							fflush(stdout);
+						}
 						break;					
 					case RTLP_TYPE_SERVER_TO_CLIENT_PB_ASYNC:
 						printf("\n(All) %s: %s\n", rtlp_packet.source, rtlp_packet.data);
@@ -109,8 +124,6 @@ int main(int argc, char **argv) {
 				}
 			}
 		} else {
-			struct client client;
-			strcpy(client.nickname, rtlp_packet.data);
 			while(1) {
 
 				// The parent process manages outcoming packets
@@ -125,7 +138,7 @@ int main(int argc, char **argv) {
 				
 				// Translate command to rtlp_packet
 				memset(&rtlp_packet, 0, sizeof(rtlp_packet));
-				int from_command_to_packet_res = from_command_to_packet(cmd_buf, &rtlp_packet, &client);
+				int from_command_to_packet_res = from_command_to_packet(cmd_buf, &rtlp_packet, client);
 				if(from_command_to_packet_res == -1) {
 					// Error
 					kill(p, SIGKILL);

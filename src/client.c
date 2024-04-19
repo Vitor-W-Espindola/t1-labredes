@@ -12,7 +12,7 @@ const char * cmd_name_transferpv = "transferpv";
 const char * cmd_name_enabletransfer = "enabletransfer";
 const char * cmd_name_disabletransfer = "disabletransfer";
 const char * cmd_name_nickname = "nickname";
-const char * cmd_name_list = "list";
+const char * cmd_name_listusers = "listusers";
 const char * cmd_name_quit = "quit";
 
 int from_command_to_packet(char *command, struct rtlp_packet * rtlp_packet, struct client * client) {
@@ -48,8 +48,8 @@ int from_command_to_packet(char *command, struct rtlp_packet * rtlp_packet, stru
 				operation = RTLP_OPERATION_CLIENT_DISABLETRANSFER;
 			else if(!strcmp(cmd, cmd_name_nickname))
 				operation = RTLP_OPERATION_CLIENT_NICKNAME;
-			else if(!strcmp(cmd, cmd_name_list))
-				operation = RTLP_OPERATION_CLIENT_LIST;
+			else if(!strcmp(cmd, cmd_name_listusers))
+				operation = RTLP_OPERATION_CLIENT_LISTUSERS;
 			else if(!strcmp(cmd, cmd_name_quit))
 				operation = RTLP_OPERATION_CLIENT_QUIT;
 			else return -1; 
@@ -178,14 +178,26 @@ int from_command_to_packet(char *command, struct rtlp_packet * rtlp_packet, stru
 		case RTLP_OPERATION_CLIENT_NICKNAME:
 			// usage: nickname <new_nickname>
 			// source -> source client's nickname
-			// destination -> empy
+			// destination -> empty
 			// data -> new_nickname
 
 			strcpy(source, client->nickname);
 			strcpy(data, first_parameter); 
 			type = RTLP_TYPE_CLIENT_TO_SERVER_REQ;
 			response = RTLP_RESPONSE_NONE;
-			transport_protocol = RTLP_TRANSPORT_PROTOCOL_UDP;
+			transport_protocol = RTLP_TRANSPORT_PROTOCOL_TCP;
+			
+			break;
+		case RTLP_OPERATION_CLIENT_LISTUSERS:
+			// usage: listusers
+			// source -> source clients's nickname
+			// destination -> empty
+			// data -> empty
+			strcpy(source, client->nickname);
+			type = RTLP_TYPE_CLIENT_TO_SERVER_REQ;
+			response = RTLP_RESPONSE_NONE;
+			transport_protocol = RTLP_TRANSPORT_PROTOCOL_TCP;
+			
 			break;
 		default:
 			break;

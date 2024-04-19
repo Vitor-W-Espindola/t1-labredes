@@ -15,7 +15,7 @@ extern const char * cmd_name_transferpv;
 extern const char * cmd_name_enabletransfer;
 extern const char * cmd_name_disabletransfer;
 extern const char * cmd_name_nickname;
-extern const char * cmd_name_list;
+extern const char * cmd_name_listusers;
 extern const char * cmd_name_quit;
 
 struct client {

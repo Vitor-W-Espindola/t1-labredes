@@ -40,6 +40,6 @@ void list_users(struct server * server);
 void print_user_info(struct user * user);
 int process_packet(struct server * server, struct rtlp_packet * rtlp_packet_in);
 struct user * search_user(struct server * server, char nickname[SERVER_NICKNAME_LEN]);
-int ack(struct server * server, struct rtlp_packet * rtlp_packet_in, int8_t response);
+int ack(struct server * server, struct rtlp_packet * rtlp_packet_in, uint8_t response, uint8_t data[RTLP_DATA_LEN]);
 
 #endif
