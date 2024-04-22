@@ -69,14 +69,13 @@ int main(int argc, char **argv) {
 	memcpy(&rtlp_packet, packet_buf, SERVER_BUF_LEN);
 	
 	// Hold a copy of client structure
-	void * shmem = mmap(NULL, sizeof(struct client), PROT_READ | PROT_WRITE, MAP_SHARED | MAP_ANONYMOUS, -1, 0);
+	void * shmem = mmap(NULL, sizeof(struct client), PROT_READ | PROT_WRITE, MAP_SHARED | MAP_ANONYMOUS, -1, 0); // TODO: add mutex
 	struct client * client = (struct client *) shmem;
 
 	if(rtlp_packet.response == RTLP_RESPONSE_FULL_SERVER) printf("The server is full.\n");
 	else {
 		// Copy the default nickname sent by the server
-		memcpy(client->nickname, rtlp_packet.data, CLIENT_NICKNAME_LEN);
-		printf("My new nickname: %s\n", client->nickname);
+		memcpy(client->nickname, rtlp_packet.data, CLIENT_NICKNAME_LEN); // TODO: add mutex
 		pid_t p;
 		p = fork();
 		if (p < 0) {
@@ -106,7 +105,7 @@ int main(int argc, char **argv) {
 						else if(rtlp_packet.response == RTLP_RESPONSE_USER_NOT_AVAILABLE)
 							printf("User is not available for file transfering.\n");
 						else if(rtlp_packet.response == RTLP_RESPONSE_NEW_NICKNAME) {
-							memcpy(client->nickname, rtlp_packet.data, CLIENT_NICKNAME_LEN);
+							memcpy(client->nickname, rtlp_packet.data, CLIENT_NICKNAME_LEN); // TODO: add mutex
 							printf("Your nickname has been changed.\n");
 						} else if(rtlp_packet.response == RTLP_RESPONSE_LISTUSERS)
 							printf("\n%s\n", rtlp_packet.data);
@@ -155,7 +154,7 @@ int main(int argc, char **argv) {
 				
 				// Translate command to rtlp_packet
 				memset(&rtlp_packet, 0, sizeof(rtlp_packet));
-				int from_command_to_packet_res = from_command_to_packet(cmd_buf, &rtlp_packet, client);
+				int from_command_to_packet_res = from_command_to_packet(cmd_buf, &rtlp_packet, client); // TODO: add mutex
 				if(from_command_to_packet_res == -1) {
 					// Error
 					printf("Wrong command.\n");
