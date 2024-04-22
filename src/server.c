@@ -65,7 +65,7 @@ void * connection_handler(void * server) {
 	sprintf(new_nickname, "%s:%d", inet_ntoa(client_si.sin_addr), ntohs(client_si.sin_port));
 	u.allow_transfer = 0;
 	create_user(&u, client_socket_fd, client_si, new_nickname);
-	add_new_user(s, &u);
+	add_new_user(s, &u); // TODO: add mutex
 		
 	struct rtlp_packet rtlp_packet;
 	uint8_t operation = RTLP_OPERATION_SERVER_MSG;
@@ -91,6 +91,7 @@ void * connection_handler(void * server) {
 		
 		printf("Closed connection with %s:%d (Server Full)\n", inet_ntoa(client_si.sin_addr), ntohs(client_si.sin_port));
 		
+		// TODO: add mutex
 		remove_user(s, &u);
 		s->num_connected_users -= 1;
 		
@@ -148,7 +149,7 @@ void * connection_handler(void * server) {
 			memcpy(&rtlp_packet_in, buf_in, SERVER_BUF_LEN);
 
 			// Process packet
-			int process_packet_res = process_packet(s, &rtlp_packet_in);
+			int process_packet_res = process_packet(s, &rtlp_packet_in); // TODO: add mutex
 			
 			if(process_packet_res == 1) break; // Client quitted
 
@@ -157,6 +158,7 @@ void * connection_handler(void * server) {
 			printf("\n");
 		}
 		if(process_packet_res == 0) {
+			// TODO: add mutex
 			remove_user(s, &u);
 			s->num_connected_users -= 1;
 		}
