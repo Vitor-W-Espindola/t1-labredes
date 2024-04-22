@@ -9,6 +9,8 @@
 #define CLIENT_NICKNAME_LEN 32
 #define CLIENT_FILENAME_LEN 16
 
+extern pthread_mutex_t client_mutex;
+
 extern const char * cmd_name_sendall;
 extern const char * cmd_name_sendpv;
 extern const char * cmd_name_transferpv;

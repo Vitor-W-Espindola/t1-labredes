@@ -14,6 +14,8 @@
 #include "../src/client.h"
 #include "../src/server.h"
 
+pthread_mutex_t client_mutex;
+
 void die(char *s) {
 	perror(s);
 	exit(1);
@@ -25,7 +27,12 @@ int main(int argc, char **argv) {
 		printf("Usage: %s <hostname> <port>\n", argv[0]);
 		exit(0);
 	}
-		
+	
+	if(pthread_mutex_init(&client_mutex, NULL) != 0) {
+		printf("error: mutex init failed\n");
+		return 1;
+	}
+	
 	// Stores server address info
 	struct sockaddr_in server_addr, client_addr;
 	int server_addr_length = sizeof(server_addr);
@@ -69,13 +76,15 @@ int main(int argc, char **argv) {
 	memcpy(&rtlp_packet, packet_buf, SERVER_BUF_LEN);
 	
 	// Hold a copy of client structure
-	void * shmem = mmap(NULL, sizeof(struct client), PROT_READ | PROT_WRITE, MAP_SHARED | MAP_ANONYMOUS, -1, 0); // TODO: add mutex
+	void * shmem = mmap(NULL, sizeof(struct client), PROT_READ | PROT_WRITE, MAP_SHARED | MAP_ANONYMOUS, -1, 0);
 	struct client * client = (struct client *) shmem;
 
 	if(rtlp_packet.response == RTLP_RESPONSE_FULL_SERVER) printf("The server is full.\n");
 	else {
 		// Copy the default nickname sent by the server
-		memcpy(client->nickname, rtlp_packet.data, CLIENT_NICKNAME_LEN); // TODO: add mutex
+		pthread_mutex_lock(&client_mutex);
+		memcpy(client->nickname, rtlp_packet.data, CLIENT_NICKNAME_LEN);
+		pthread_mutex_unlock(&client_mutex);
 		pid_t p;
 		p = fork();
 		if (p < 0) {
@@ -105,7 +114,9 @@ int main(int argc, char **argv) {
 						else if(rtlp_packet.response == RTLP_RESPONSE_USER_NOT_AVAILABLE)
 							printf("User is not available for file transfering.\n");
 						else if(rtlp_packet.response == RTLP_RESPONSE_NEW_NICKNAME) {
-							memcpy(client->nickname, rtlp_packet.data, CLIENT_NICKNAME_LEN); // TODO: add mutex
+							pthread_mutex_lock(&client_mutex);
+							memcpy(client->nickname, rtlp_packet.data, CLIENT_NICKNAME_LEN);
+							pthread_mutex_unlock(&client_mutex);
 							printf("Your nickname has been changed.\n");
 						} else if(rtlp_packet.response == RTLP_RESPONSE_LISTUSERS)
 							printf("\n%s\n", rtlp_packet.data);
@@ -154,7 +165,9 @@ int main(int argc, char **argv) {
 				
 				// Translate command to rtlp_packet
 				memset(&rtlp_packet, 0, sizeof(rtlp_packet));
-				int from_command_to_packet_res = from_command_to_packet(cmd_buf, &rtlp_packet, client); // TODO: add mutex
+				pthread_mutex_lock(&client_mutex);	
+				int from_command_to_packet_res = from_command_to_packet(cmd_buf, &rtlp_packet, client);
+				pthread_mutex_unlock(&client_mutex);
 				if(from_command_to_packet_res == -1) {
 					// Error
 					printf("Wrong command.\n");
@@ -187,6 +200,7 @@ int main(int argc, char **argv) {
 	}		
 
 	close(socket_fd);
+	pthread_mutex_destroy(&client_mutex);
 	
 	return 0;
 }
