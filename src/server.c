@@ -10,6 +10,8 @@
 #include "server.h"
 #include "rtlp.h"
 
+pthread_mutex_t server_mutex;
+
 int create_server(struct server * server) {
 
 	// Creates a file descriptor for a socket which works
@@ -65,16 +67,18 @@ void * connection_handler(void * server) {
 	sprintf(new_nickname, "%s:%d", inet_ntoa(client_si.sin_addr), ntohs(client_si.sin_port));
 	u.allow_transfer = 0;
 	create_user(&u, client_socket_fd, client_si, new_nickname);
-	add_new_user(s, &u); // TODO: add mutex
-		
+	
+	pthread_mutex_lock(&server_mutex);
+	add_new_user(s, &u);
+	pthread_mutex_unlock(&server_mutex);		
+
 	struct rtlp_packet rtlp_packet;
 	uint8_t operation = RTLP_OPERATION_SERVER_MSG;
 	uint8_t source[RTLP_SOURCE_LEN];
 	uint8_t destination[RTLP_DESTINATION_LEN];
 	uint8_t data[RTLP_DATA_LEN];
 	uint8_t packet_buf[SERVER_BUF_LEN];
-
-	s->num_connected_users += 1;	
+	
 	if(s->num_connected_users > s->max_connected_users) {
 
 		memset(source, 0, RTLP_SOURCE_LEN);
@@ -91,9 +95,9 @@ void * connection_handler(void * server) {
 		
 		printf("Closed connection with %s:%d (Server Full)\n", inet_ntoa(client_si.sin_addr), ntohs(client_si.sin_port));
 		
-		// TODO: add mutex
+		pthread_mutex_lock(&server_mutex);
 		remove_user(s, &u);
-		s->num_connected_users -= 1;
+		pthread_mutex_unlock(&server_mutex);
 		
 		close(client_socket_fd);	
 		
@@ -149,8 +153,10 @@ void * connection_handler(void * server) {
 			memcpy(&rtlp_packet_in, buf_in, SERVER_BUF_LEN);
 
 			// Process packet
-			int process_packet_res = process_packet(s, &rtlp_packet_in); // TODO: add mutex
-			
+			pthread_mutex_lock(&server_mutex);
+			int process_packet_res = process_packet(s, &rtlp_packet_in);
+			pthread_mutex_unlock(&server_mutex);		
+	
 			if(process_packet_res == 1) break; // Client quitted
 
 			for(int i = 0; i < SERVER_BUF_LEN; i++)
@@ -158,9 +164,9 @@ void * connection_handler(void * server) {
 			printf("\n");
 		}
 		if(process_packet_res == 0) {
-			// TODO: add mutex
+			pthread_mutex_lock(&server_mutex);
 			remove_user(s, &u);
-			s->num_connected_users -= 1;
+			pthread_mutex_unlock(&server_mutex);
 		}
 		printf("Closed connection with %s:%d\n", inet_ntoa(client_si.sin_addr), ntohs(client_si.sin_port));
 		close(client_socket_fd);
@@ -195,6 +201,7 @@ int add_new_user(struct server * server, struct user * user) {
 			break;
 		}
 	}	
+	server->num_connected_users += 1;	
 	return 0;
 }
 
@@ -205,6 +212,8 @@ int remove_user(struct server * server, struct user * user) {
 			break;
 		}
 	}
+	server->num_connected_users -= 1;
+	return 0;
 }
 
 void list_users(struct server * server) {

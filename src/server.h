@@ -14,6 +14,8 @@
 #define SERVER_MAX_PENDING_CONNECTIONS 5
 #define SERVER_NICKNAME_LEN 32
 
+extern pthread_mutex_t server_mutex;
+
 struct user {
 	int user_socket_fd;
 	struct sockaddr_in user_addr_info;
